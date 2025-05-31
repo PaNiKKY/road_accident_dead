@@ -25,7 +25,7 @@ def create_bucket(bucket_name, project_id=None):
     except Exception as e:
         print(f"Failed to create bucket {bucket_name}: {e}")
 
-def upload_to_gcs(bucket_name, df, destination_blob_name):
+def upload_to_gcs(bucket_name, df, destination_blob_name, file_format='csv'):
     """Uploads a file to the bucket."""
     # Initialize a storage client
     storage_client = storage.Client()
@@ -35,7 +35,7 @@ def upload_to_gcs(bucket_name, df, destination_blob_name):
 
     # Create a new blob and upload the file's content
     blob = bucket.blob(destination_blob_name)
-    blob.upload_from_string(df, content_type='text/csv')
+    blob.upload_from_string(df, content_type=f'text/{file_format}')
 
     print(f"uploaded to {destination_blob_name}.")
 
@@ -53,6 +53,24 @@ def download_from_gcs(bucket_name, source_blob_name):
     # Download the blob's content into a DataFrame
     data = blob.download_as_string()
     df = pd.read_csv(BytesIO(data))
+
+    print(f"Downloaded {source_blob_name} from {bucket_name}.")
+    return df
+
+def download_parquet_from_gcs(bucket_name, source_blob_name):
+    """Downloads a parquet file from the bucket."""
+    # Initialize a storage client
+    storage_client = storage.Client()
+
+    # Get the bucket
+    bucket = storage_client.bucket(bucket_name)
+
+    # Get the blob
+    blob = bucket.blob(source_blob_name)
+
+    # Download the blob's content into a DataFrame
+    data = blob.download_as_bytes()
+    df = pd.read_parquet(BytesIO(data))
 
     print(f"Downloaded {source_blob_name} from {bucket_name}.")
     return df

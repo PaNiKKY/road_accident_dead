@@ -1,4 +1,5 @@
 from airflow.decorators import dag, task
+from airflow.sdk import Variable
 import sys
 import os
 from datetime import datetime
@@ -10,7 +11,7 @@ from etl.extract import upload_data_to_gcs
 
 
 @dag(
-    schedule='@daily',
+    schedule=None,
     start_date=datetime(2023, 10, 1),
     catchup=False,
     tags=['gcp', 'extract']
@@ -18,10 +19,10 @@ from etl.extract import upload_data_to_gcs
 def download_dag():
     @task
     def extract_task(year):
-        project_id = "de-zoomcamp-course-415504"
-        bucket_name = f"{project_id}-raw"
+        project_id = Variable.get("project_id")
+        bucket_name = f"{project_id}-bucket"
         
-        destination_blob_name = f'accidents_{year}.csv'
+        destination_blob_name = f'raw/accidents_{year}.csv'
 
         download_link = f"https://data.go.th/dataset/f5804870-7dc2-42df-86f3-769d6cc2ae23/resource/c61d2448-b953-4a2f-9cd8-6ab8f41ea487/download/_{year}.csv"
 

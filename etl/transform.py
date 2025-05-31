@@ -6,9 +6,11 @@ import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.gcp_utils import download_from_gcs
+from src.gcp_utils import download_from_gcs, upload_to_gcs
+
 
 def spark_transform(df):
+    # Initialize Spark session
     spark = SparkSession.builder \
         .appName("TransformData") \
         .getOrCreate()
@@ -70,24 +72,35 @@ def spark_transform(df):
         "sub_district", "district", "province", "latitude", "longitude"
     )
 
+    sparkDF2 = sparkDF2.dropDuplicates()
 
     sparkDF2.printSchema()
-    sparkDF2.select("date_rec").show(10)
 
     pd_df = sparkDF2.toPandas()
     spark.stop()
     return pd_df
 
-df = download_from_gcs(
-    bucket_name="de-zoomcamp-course-415504-raw",
-    source_blob_name="accidents_2554.csv"
-)
+def transform_pipeline(projectId, folder_source, folder_dest, source_blob_name):
+    bucket_name=f"{projectId}-bucket"
+    source_name=f"{folder_source}/{source_blob_name}.csv"
+    dest_name = f"{folder_dest}/{source_blob_name}.parquet"
 
-if df is not None:
-    print(len(df), "rows downloaded from GCS.")
-    result_df = spark_transform(df)
-    print(result_df[~result_df["date_rec"].isna()][["date_rec"]].head())
-    
+    df = download_from_gcs(
+            bucket_name=bucket_name,
+            source_blob_name=source_name
+        )
 
-else:
-    print("No data to transform.")
+    if df is not None:
+        print(len(df), "rows downloaded from GCS.")
+        result_df = spark_transform(df)
+        result_df["location"] = result_df["location"].astype("str")
+        df_byte = result_df.to_parquet(index=False, engine='pyarrow')
+        upload_to_gcs(
+            bucket_name=bucket_name,
+            df=df_byte,
+            destination_blob_name=dest_name,
+            file_format='parquet'
+        )
+        
+    else:
+        print("No data to transform.")

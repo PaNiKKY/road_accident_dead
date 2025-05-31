@@ -1,11 +1,18 @@
 from airflow.decorators import dag, task
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from airflow.sdk import Variable
 import sys
 import os
 from datetime import datetime
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from etl.transform import transform_pipeline
+
+source_blob_name = "accidents_2555"
+project_id = Variable.get("project_id")
+
 @dag(
     schedule='@daily',
     start_date=datetime(2023, 10, 1),
@@ -14,21 +21,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 def accidents_transform_load_dag():
 
-    transform_task = SparkSubmitOperator(
-        task_id='transform_task',
-        application="etl/transform.py",
-        name='accidents_transform',
-        conn_id='spark_conn',
-        verbose=True,
-        # conf={
-        #     'spark.executor.memory': '1g',
-        #     'spark.driver.memory': '1g',
-        #     'spark.sql.adaptive.enabled': 'false',
-        #     'spark.dynamicAllocation.enabled': 'false',
-        #     'spark.serializer': 'org.apache.spark.serializer.KryoSerializer'
-        # },
-    )
+    @task.pyspark(conn_id = "spark_conn")
+    def transform_task():
+        transform_pipeline(
+            projectId=project_id,
+            folder_source="raw",
+            folder_dest="transformed",
+            source_blob_name=source_blob_name,
+        )
     
-    transform_task
+    transform_task()
 
 accidents_transform_load_dag()
