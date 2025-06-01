@@ -10,11 +10,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from etl.transform import transform_pipeline
 
-source_blob_name = "accidents_2555"
+source_blob_name = "accidents_2556"
 project_id = Variable.get("project_id")
 
 @dag(
-    schedule='@daily',
+    schedule=None,
     start_date=datetime(2023, 10, 1),
     catchup=False,
     tags=['gcp', 'extract']
@@ -29,7 +29,7 @@ def accidents_transform_load_dag():
             folder_dest="transformed",
             source_blob_name=source_blob_name,
         )
-    
+
     transform_task()
 
 accidents_transform_load_dag()

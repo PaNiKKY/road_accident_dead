@@ -11,3 +11,4 @@ asyncpg
 apache-airflow-providers-fab
 apache-airflow-providers-celery
 pyarrow
+great_expectations

@@ -93,8 +93,10 @@ def transform_pipeline(projectId, folder_source, folder_dest, source_blob_name):
     if df is not None:
         print(len(df), "rows downloaded from GCS.")
         result_df = spark_transform(df)
+
         result_df["location"] = result_df["location"].astype("str")
         df_byte = result_df.to_parquet(index=False, engine='pyarrow')
+        
         upload_to_gcs(
             bucket_name=bucket_name,
             df=df_byte,

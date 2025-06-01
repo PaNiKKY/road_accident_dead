@@ -3,3 +3,4 @@ venv/
 .env
 key.json
 test.ipynb
+.gitignore

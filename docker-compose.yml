@@ -40,21 +40,12 @@ x-airflow-common:
   networks:
     - airflow_spark_network
 
-# x-spark-common:
-#   &spark-common
-#   build:
-#     context: .
-#     dockerfile: Dockerfile_spark
-#   volumes:
-#   #   # - ./workdir:/opt/spark/work-dir
-#     - ./etl:/opt/spark/work-dir/etl
-#     - ./src:/opt/spark/work-dir/src
-
 x-spark-common: &spark-common
   image: bitnami/spark:3.5.5
   volumes:
     - ./etl:/opt/bitnami/spark/etl
     - ./src:/opt/bitnami/spark/src
+    - ./key.json:/opt/bitnami/spark/key.json
   networks:
     - airflow_spark_network
   
@@ -287,50 +278,6 @@ services:
     depends_on:
       <<: *airflow-common-depends-on
 
-  # spark-master:
-  #   <<: *spark-common
-  #   container_name: spark-master
-  #   command: ./notebook.sh
-  #   entrypoint: ['./entrypoint.sh', 'master']
-  #   # healthcheck:
-  #   #   test: [ "CMD", "curl", "-f", "http://localhost:8090" ]
-  #   #   interval: 5s
-  #   #   timeout: 3s
-  #   #   retries: 3
-  #   environment:
-  #     - SPARK_NO_DAEMONIZE=true
-  #     # - SAPRK_MASTER_WEBUI_PORT=8081
-  #     # - SPARK_LOCAL_IP=spark-master
-  #   ports:
-  #     - '8081:8080'
-  #     - '7077:7077'
-  #     - '4040:4040'
-  #     - '8888:8888'
-
-  # spark-worker:
-  #   <<: *spark-common
-  #   # container_name: spark-worker
-  #   depends_on:
-  #     - spark-master
-  #   entrypoint: ['./entrypoint.sh', 'worker']
-  #   environment:
-  #     - SPARK_NO_DAEMONIZE=true
-  #     - "SPARK_WORKER_CORES=2"
-  #     - "SPARK_WORKER_MEMORY=2G"
-  #     - "SPARK_DRIVER_MEMORY=2G"
-  #     - "SPARK_EXECUTOR_MEMORY=2G"
-  #     # - SPARK_LOCAL_IP=spark-worker-*
-
-  # spark-history-server:
-  #   <<: *spark-common
-  #   container_name: spark-history
-  #   depends_on:
-  #     - spark-master
-  #   entrypoint: ['./entrypoint.sh', 'history']
-  #   environment:
-  #     - SPARK_NO_DAEMONIZE=true
-  #   volumes:
-  #     - ./logs:/opt/spark/spark-events
   spark-master:
     <<: *spark-common
     command: bin/spark-class org.apache.spark.deploy.master.Master
