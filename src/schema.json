@@ -1,0 +1,89 @@
+[
+  {
+    "name": "dead_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "dead_year",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "age",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "sex",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "risk_helmet",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "risk_safetybelt",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "dead_date_final",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "date_rec",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "time_rec",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "cause",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "vehicle_merge_final",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "location",
+    "type": "RECORD",
+    "mode": "REQUIRED",
+    "fields": [
+      {
+        "name": "sub_district",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "district",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "province",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "latitude",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "longitude",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      }
+    ]
+  }
+]

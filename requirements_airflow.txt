@@ -1,5 +1,3 @@
-tqdm
-pydantic
 pandas
 python-dotenv
 google-cloud-storage
@@ -12,3 +10,4 @@ apache-airflow-providers-fab
 apache-airflow-providers-celery
 pyarrow
 great_expectations
+apache-airflow-providers-google

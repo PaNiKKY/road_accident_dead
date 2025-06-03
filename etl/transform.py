@@ -1,15 +1,16 @@
+from io import BytesIO
+import pandas as pd
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType, TimestampType, DateType, DoubleType, BooleanType
-from pyspark.sql.functions import when, col, struct, split, to_date, array, concat_ws
+from pyspark.sql.types import StringType, IntegerType, ArrayType, DateType, DoubleType, BooleanType, BinaryType
+from pyspark.sql.functions import when, col, struct, split, to_date, array, concat_ws, date_format, regexp_replace, md5
 import sys
 import os
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.gcp_utils import download_from_gcs, upload_to_gcs
-
-
-def spark_transform(df):
+def spark_transform(df, year):
     # Initialize Spark session
     spark = SparkSession.builder \
         .appName("TransformData") \
@@ -27,8 +28,8 @@ def spark_transform(df):
         col("Risk Helmet").alias("risk_helmet").cast(IntegerType()),\
         col("Risk Safety Belt").alias("risk_safetybelt").cast(IntegerType()),\
         to_date(col("Dead Date Final"), "d/M/yyyy").alias("dead_date_final").cast(DateType()),\
-        split(col("Date Rec"), "/").alias("date_rec"),\
-        split(col("Time Rec"), " ").alias("time_rec").cast(ArrayType(IntegerType())),\
+        to_date(col("Date Rec"), "M/d/yyyy").alias("date_rec"),\
+        split(col("Time Rec"), " ").alias("time_rec").cast(ArrayType(StringType())),\
         col("Acc Sub Dist").alias("sub_district").cast(StringType()),\
         col("Acc Dist").alias("district").cast(StringType()),\
         col("`จ.ที่เสียชีวิต`").alias("province").cast(StringType()),\
@@ -36,13 +37,12 @@ def spark_transform(df):
         col("Acclong").alias("longitude").cast(DoubleType()),\
         col("Ncause").alias("cause").cast(StringType()),\
         col("Vehicle Merge Final").alias("vehicle_merge_final").cast(StringType())
-    ).withColumn("time_rec", col("time_rec").getItem(1))\
-    .withColumn("date_rec", array(col("date_rec").getItem(0), col("date_rec").getItem(1), 
-                                  col("date_rec").getItem(2)-543).cast(ArrayType(IntegerType())))\
-    .withColumn("date_rec", to_date(concat_ws("/", col("date_rec")), "d/M/yyyy"))
+    ).withColumn("time_rec", col("time_rec").getItem(1).cast(StringType()))\
     
+    sparkDF2 = sparkDF.where((col("age") >= 0) | (col("age").isNull()))\
+                    .where(col("dead_year") == int(year)-543)
 
-    sparkDF2 = sparkDF.withColumn(
+    sparkDF2 = sparkDF2.withColumn(
             "risk_helmet", when(col("risk_helmet") == 1, True)
             .when(col("risk_helmet") == 2, False)
             .otherwise(None)
@@ -72,6 +72,17 @@ def spark_transform(df):
         "sub_district", "district", "province", "latitude", "longitude"
     )
 
+    sparkDF2 = sparkDF2.withColumn(
+        "dead_date_final",date_format(col("dead_date_final"), "yyyyMMdd").cast(IntegerType()))\
+    .withColumn(
+        "date_rec", date_format(col("date_rec"), "yyyyMMdd").cast(IntegerType()))\
+    .withColumn(
+        "date_rec", col("date_rec")-5430000)\
+    .withColumn(
+        "time_rec", regexp_replace(col("time_rec"), ":", "").cast(StringType()))\
+    .withColumn(
+        "dead_id", md5(col("dead_id").cast(BinaryType())))\
+
     sparkDF2 = sparkDF2.dropDuplicates()
 
     sparkDF2.printSchema()
@@ -80,29 +91,37 @@ def spark_transform(df):
     spark.stop()
     return pd_df
 
-def transform_pipeline(projectId, folder_source, folder_dest, source_blob_name):
-    bucket_name=f"{projectId}-bucket"
-    source_name=f"{folder_source}/{source_blob_name}.csv"
-    dest_name = f"{folder_dest}/{source_blob_name}.parquet"
-
-    df = download_from_gcs(
-            bucket_name=bucket_name,
-            source_blob_name=source_name
-        )
+def transform_pipeline(string_data, year):
+    df = pd.read_csv(BytesIO(string_data))
 
     if df is not None:
         print(len(df), "rows downloaded from GCS.")
-        result_df = spark_transform(df)
+        result_df = spark_transform(df,year)
+        result_df["date_rec"] = result_df["date_rec"].astype("Int64")
+        result_df["risk_helmet"] = result_df["risk_helmet"].astype(pd.ArrowDtype(pa.bool_()))
+        result_df["risk_safetybelt"] = result_df["risk_safetybelt"].astype(pd.ArrowDtype(pa.bool_()))
+        result_df["date_rec"] = result_df["date_rec"].astype("Int64")
+        result_df["time_rec"] = result_df["time_rec"].astype(pd.ArrowDtype(pa.string()))
 
-        result_df["location"] = result_df["location"].astype("str")
-        df_byte = result_df.to_parquet(index=False, engine='pyarrow')
-        
-        upload_to_gcs(
-            bucket_name=bucket_name,
-            df=df_byte,
-            destination_blob_name=dest_name,
-            file_format='parquet'
+        struct_type =pd.ArrowDtype(
+            pa.struct(
+                [
+                    ("sub_district", pa.string()), 
+                    ("district", pa.string()),
+                    ("province", pa.string()),
+                    ("latitude", pa.float64()),
+                    ("longitude", pa.float64())
+                ]
+            )
         )
-        
+        result_df["location"] = result_df["location"].astype(struct_type)
+    
+        print(result_df.dtypes)
+
+        df_byte = result_df.to_parquet(index=False, engine='pyarrow')
+        print(f"Data {len(result_df)} rows transformed successfully.")
+
+        return df_byte
     else:
         print("No data to transform.")
+        return None
