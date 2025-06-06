@@ -15,4 +15,3 @@ def load_to_dataframe(download_link):
         csv = df.to_csv(index=False)
 
     return csv
-
